@@ -1,5 +1,6 @@
 # Tetris Game
 ### **By Andrew Miller**
+___
 
 ## Table of contents
 * [Summary](#summary)
@@ -9,6 +10,8 @@
 * [Getting Started](#getting-started)
 * [Sources](#sources)
 * [Contact Info](#contact-info)
+
+___
 
 ## Summary
 
@@ -23,8 +26,12 @@ keep the integrity of my goal intact. Overall, I enjoyed the process of creating
 frustration and wanting to pull my hair out at times. Most importantly, I learned many concepts
 about both python and pygame and expanded my programming knowledge.
 
+___
+
 ## UML Class Diagram
 ![class diagram](assets/tetris_uml_class_diagram.jpg)
+
+___
 
 ## Graphical Elements Diagram
 ![graphical element diagram](assets/tetris_gui_diagram.jpg)
@@ -35,21 +42,37 @@ tetromino queue surface. That tetromino queue surface is drawn on the window. Us
 the GUI but can cause confusion when it comes to the position of elements in deeper layers. This confusion occurs since
 each surface has its own positional data.
 
+___
+
 ## Technologies
 
-* Python version: 3.11
+* Python version: 3.10 and above
 * Pygame version: 2.3
+
+___
 
 ## Getting started
 
-To run in a python IDE, open the terminal or command prompt and install pygame by running:
+To run, install Python 3.10 or above by going to https://www.python.org/downloads/.  
+
+For Windows, install the Pygame library by opening a powershell or command prompt and run:
 
     $ pip install pygame
+
+For Mac, install the Pygame library by opening the terminal and run:
+
+    % pip3 install pygame
+
+The project can then be opened in the IDE of your choice that supports Python.
+
+___
 
 ## Sources
 The debug file was made by Clear Code https://www.youtube.com/@ClearCode  
 Even though the debug file isn't needed for a working version of this game, I wanted to include it as a small tool I used
 during the development of this program.
+
+___
 
 ## Contact info
 Email: ajmiller611@live.com
