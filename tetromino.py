@@ -32,11 +32,11 @@ class Tetromino(pygame.sprite.Sprite):
         self.block_group = pygame.sprite.Group()
         self.image = self.create_tetromino(0, 0)
         self.rect = self.image.get_rect(topleft=(0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
         # Tetromino position and the block's screen positional data needs to be updated together to avoid inconsistency.
         self.set_rect_x(x)
         # Starting y position will be on top of the play area.
         self.set_rect_y(y - self.rect.height)
-        self.mask = pygame.mask.from_surface(self.image)
 
     def get_color(self):
         color_dict = {
@@ -72,6 +72,102 @@ class Tetromino(pygame.sprite.Sprite):
         tetromino_surface.set_colorkey((255, 255, 255))
         self.block_group.draw(tetromino_surface)
         return tetromino_surface
+
+    def set_rect_x(self, x):
+        """
+            When setting the rect's x coordinate, the blocks' x coordinates needs to be updated as well.
+            Since the blocks are drawn on their own surface, their rect.x attribute does not represent their x position
+            on the display surface. Calculate the difference between the new and current x position to adjust the
+            blocks' screen's x position attribute.
+        """
+        x_difference = x - self.rect.x
+        self.rect.x = x
+        for block in self.block_group:
+            block.screen_x_pos += x_difference
+
+    def set_rect_y(self, y):
+        """
+            When setting the rect's y coordinate, the blocks' y coordinates needs to be updated as well.
+            Since the blocks are drawn on their own surface, their rect.x attribute does not represent their y position
+            on the display surface. Calculate the difference between the new and current y position to adjust the
+            blocks' screen's y position attribute.
+        """
+        y_difference = y - self.rect.y
+        self.rect.y = y
+        for block in self.block_group:
+            block.screen_y_pos += y_difference
+
+    def move(self, x_change, y_change):
+        """
+            Move the tetromino x and y coordinates by the passed value. The blocks' x and y position needs to be changed
+            as well to keep their positional assets accurate.
+        """
+        self.rect.x += x_change
+        self.rect.y += y_change
+        for block in self.block_group:
+            block.screen_x_pos += x_change
+            block.screen_y_pos += y_change
+
+    def rotate(self, counterclockwise=True):
+        if not self.shape == 'O':
+            # Save the tetromino's current x and y position.
+            original_x_pos = self.rect.x
+            original_y_pos = self.rect.y
+
+            # Rotate the tetromino surface by indicated direction.
+            if counterclockwise:
+                self.image = pygame.transform.rotate(self.image, 90)
+            else:
+                self.image = pygame.transform.rotate(self.image, -90)
+            self.rect = self.image.get_rect(topleft=(original_x_pos, original_y_pos))
+            self.mask = pygame.mask.from_surface(self.image)
+
+            # Update the position of the blocks.
+            for block in self.block_group:
+                # Pivot around the tetromino top left corner.  The y coordinate is negative for the calculation to be
+                # done in the Cartesian coordinate system.
+                pivot_point = (self.rect.x, -self.rect.y)
+
+                # The top right point of the block will become the top left point after rotation. That is the only point
+                # that needs calculated since graphical objects are drawn from the top left corner.
+                top_right_point = (block.screen_x_pos + block.rect.width, -block.screen_y_pos)
+
+                # Translate the point to where it would be if the pivot point was the origin.
+                top_right_point_translated = (top_right_point[0] - pivot_point[0],
+                                              top_right_point[1] - pivot_point[1])
+
+                if counterclockwise:
+                    # 90-degree couterclockwise rotation rule is (x,y) becomes (-y,x).
+                    top_right_point_rotated = (-top_right_point_translated[1],
+                                               top_right_point_translated[0])
+                else:
+                    # 90-degree clockwise rotation rule is (x,y) becomes (y,-x).
+                    top_right_point_rotated = (top_right_point_translated[1],
+                                               -top_right_point_translated[0])
+
+                # Translate the point back to the pivot point and the point is now the top left point of the block.
+                now_top_left_point_translated_back = (top_right_point_rotated[0] + pivot_point[0],
+                                                      top_right_point_rotated[1] + pivot_point[1])
+
+                # Shift the blocks by the tetromino's height to put the tetromino back in its original height
+                # position so the rotation appears to have happened in place.
+                shifted_top_left_point = (now_top_left_point_translated_back[0],
+                                          abs(now_top_left_point_translated_back[1] - self.rect.height))
+
+                # Update the blocks coordinates on the main display surface.
+                block.screen_x_pos = shifted_top_left_point[0]
+                block.screen_y_pos = shifted_top_left_point[1]
+
+                # The block's rect coordinates are in reference to the surface created in the Tetromino class that
+                # contains all the drawn blocks.  The top left corner of that surface can be treated as the origin in
+                # the Cartesian coordinate system.  A modified 90-degree counterclockwise rotation rule(using positive
+                # y instead of negative) is applied to get the rotated coordinate of the block's top right coordinate.
+                # After rotation, the top right coordinate becomes the top left coordinate.  A shift of the y coordinate
+                # by the height of the tetromino puts the coordinate back in the place it would be on the tetromino's
+                # surface.
+                top_right_x = block.rect.x + block.rect.width
+                block.rect.x = block.rect.y
+                block.rect.y = abs(top_right_x - self.rect.height)
 
     def condense_or_separate(self):
         def create_new_tetromino_surface(height):
@@ -274,99 +370,3 @@ class Tetromino(pygame.sprite.Sprite):
 
                 self.block_group.draw(self.image)
                 self.mask = pygame.mask.from_surface(self.image)
-
-    def set_rect_x(self, x):
-        """
-            When setting the rect's x coordinate, the blocks' x coordinates needs to be updated as well.
-            Since the blocks are drawn on their own surface, their rect.x attribute does not represent their x position
-            on the display surface. Calculate the difference between the new and current x position to adjust the
-            blocks' screen's x position attribute.
-        """
-        x_difference = x - self.rect.x
-        self.rect.x = x
-        for block in self.block_group:
-            block.screen_x_pos += x_difference
-
-    def set_rect_y(self, y):
-        """
-            When setting the rect's y coordinate, the blocks' y coordinates needs to be updated as well.
-            Since the blocks are drawn on their own surface, their rect.x attribute does not represent their y position
-            on the display surface. Calculate the difference between the new and current y position to adjust the
-            blocks' screen's y position attribute.
-        """
-        y_difference = y - self.rect.y
-        self.rect.y = y
-        for block in self.block_group:
-            block.screen_y_pos += y_difference
-
-    def move(self, x_change, y_change):
-        """
-            Move the tetromino x and y coordinates by the passed value. The blocks' x and y position needs to be changed
-            as well to keep their positional data accurate.
-        """
-        self.rect.x += x_change
-        self.rect.y += y_change
-        for block in self.block_group:
-            block.screen_x_pos += x_change
-            block.screen_y_pos += y_change
-
-    def rotate(self, counterclockwise=True):
-        if not self.shape == 'O':
-            # Save the tetromino's current x and y position.
-            original_x_pos = self.rect.x
-            original_y_pos = self.rect.y
-
-            # Rotate the tetromino surface by indicated direction.
-            if counterclockwise:
-                self.image = pygame.transform.rotate(self.image, 90)
-            else:
-                self.image = pygame.transform.rotate(self.image, -90)
-            self.rect = self.image.get_rect(topleft=(original_x_pos, original_y_pos))
-            self.mask = pygame.mask.from_surface(self.image)
-
-            # Update the position of the blocks.
-            for block in self.block_group:
-                # Pivot around the tetromino top left corner.  The y coordinate is negative for the calculation to be
-                # done in the Cartesian coordinate system.
-                pivot_point = (self.rect.x, -self.rect.y)
-
-                # The top right point of the block will become the top left point after rotation. That is the only point
-                # that needs calculated since graphical objects are drawn from the top left corner.
-                top_right_point = (block.screen_x_pos + block.rect.width, -block.screen_y_pos)
-
-                # Translate the point to where it would be if the pivot point was the origin.
-                top_right_point_translated = (top_right_point[0] - pivot_point[0],
-                                              top_right_point[1] - pivot_point[1])
-
-                if counterclockwise:
-                    # 90-degree couterclockwise rotation rule is (x,y) becomes (-y,x).
-                    top_right_point_rotated = (-top_right_point_translated[1],
-                                               top_right_point_translated[0])
-                else:
-                    # 90-degree clockwise rotation rule is (x,y) becomes (y,-x).
-                    top_right_point_rotated = (top_right_point_translated[1],
-                                               -top_right_point_translated[0])
-
-                # Translate the point back to the pivot point and the point is now the top left point of the block.
-                now_top_left_point_translated_back = (top_right_point_rotated[0] + pivot_point[0],
-                                                      top_right_point_rotated[1] + pivot_point[1])
-
-                # Shift the blocks by the tetromino's height to put the tetromino back in its original height
-                # position so the rotation appears to have happened in place.
-                shifted_top_left_point = (now_top_left_point_translated_back[0],
-                                          abs(now_top_left_point_translated_back[1] - self.rect.height))
-
-                # Update the blocks coordinates on the main display surface.
-                block.screen_x_pos = shifted_top_left_point[0]
-                block.screen_y_pos = shifted_top_left_point[1]
-
-                # The block's rect coordinates are in reference to the surface created in the Tetromino class that
-                # contains all the drawn blocks.  The top left corner of that surface can be treated as the origin in
-                # the Cartesian coordinate system.  A modified 90-degree counterclockwise rotation rule(using positive
-                # y instead of negative) is applied to get the rotated coordinate of the block's top right coordinate.
-                # After rotation, the top right coordinate becomes the top left coordinate.  A shift of the y coordinate
-                # by the height of the tetromino puts the coordinate back in the place it would be on the tetromino's
-                # surface.
-                top_right_x = block.rect.x + block.rect.width
-                block.rect.x = block.rect.y
-                block.rect.y = abs(top_right_x - self.rect.height)
